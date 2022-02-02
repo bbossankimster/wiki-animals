@@ -1,31 +1,8 @@
-import requests
-from bs4 import BeautifulSoup
+import tools.classes as classes
+from settings import BASE_DIR, WIKI_URL
+from tools.web_parsing import get_animal_names, get_wiki_html, get_pic_urls
+import os
 
-WIKI_URL = "https://en.wikipedia.org/wiki/List_of_animal_names"
-
-
-def get_wiki_html(url=WIKI_URL):
-    client = requests.Session()
-    response = client.get(WIKI_URL)
-    response.encoding = 'utf-8'
-    html = response.text
-    return html
-
-
-def get_animal_names(html):
-    soup = BeautifulSoup(html, "html.parser")
-    tables = soup.find_all("table")
-    print(len(tables))
-    cntr = 0
-    animals = {}
-    for table in tables[1:]:
-        for raw in table.find_all("tr"):
-            cntr += 1
-            cells = raw.find_all("td")
-            if len(cells) != 0:
-                animal_name, collateral_adjective = cells[0].text, cells[5].text
-                animals[animal_name] = collateral_adjective.split(" ")
-    return animals
 
 
 def print_names(animals):
@@ -33,7 +10,29 @@ def print_names(animals):
         print("{}  >>> {}".format(animal, ", ".join(animals[animal])))
 
 
+def run_threads(download_pool, job_result):
+    for loader in download_pool:
+        loader.start()
+    for loader in download_pool:
+        loader.join()
+        job_result[loader.task_id] = loader.result
+
+
+def download_images(urls):
+    cntr = 0
+    download_pool = []
+    job_result = {}
+    for url in urls:
+        cntr += 1
+        download_pool.append(classes.ImageLoader(cntr, url))
+    run_threads(download_pool, job_result)
+    return job_result
+
+
 if __name__ == "__main__":
     html = get_wiki_html(WIKI_URL)
-    animals = get_animal_names(html)
+    animals, http_paths = get_animal_names(html)
     print_names(animals)
+    job_result = download_images(http_paths[0:22])
+    for job in sorted([*job_result]):
+        print(job_result[job])

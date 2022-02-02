@@ -1,7 +1,8 @@
 from app import *
 
 
-def test_names_is_dict():
+def test_get_names():
     html = get_wiki_html(WIKI_URL)
-    animals = get_animal_names(html)
+    animals, http_paths  = get_animal_names(html)
     assert animals["Zebra"] == ["zebrine", "hippotigrine"]
+    assert len(http_paths) == len(animals)
